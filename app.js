@@ -5,12 +5,14 @@ var logger = require('morgan');
 var cookieParser = require('cookie-parser');
 var bodyParser = require('body-parser');
 var flash = require('connect-flash');
+const proxy = require('express-http-proxy');
 
 var routes = require('./routes/index');
 var users = require('./routes/users');
 var db = require('./configs/db');
-
 var app = express();
+
+app.use('/proxy', proxy('www.baidu.com'));
 
 // view engine setup
 app.set('views', path.join(__dirname, 'views'));
@@ -22,6 +24,7 @@ app.use(logger('dev'));
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(cookieParser());
+
 app.use(express.static(path.join(__dirname, 'public')));
 
 //检测登录状态
@@ -45,8 +48,12 @@ app.use(function (req, res, next) {
   res.locals.infos = req.flash('info');
   next();
 });
-app.use('/', routes);
-app.use('/users', users);
+try {
+  app.use('/', routes);
+  app.use('/users', users);
+} catch (error) {
+  console.log("error", error);
+}
 
 // catch 404 and forward to error handler
 app.use(function (req, res, next) {

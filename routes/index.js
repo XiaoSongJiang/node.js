@@ -1,17 +1,33 @@
+var fs = require('fs');
+var path = require('path');
 var express = require('express');
 var router = express.Router();
+var multer = require('multer');
+var upload = multer({ dest: 'public/uploads/' })
 
 var crypto = require('crypto');
 var User = require('../models/users');
+var Article = require('../models/article');
 var checkLogin = require('../middleware/loginStatusCheck').checkLogin;
 var checkNotLogin = require('../middleware/loginStatusCheck').checkNotLogin;
+router.use(function (req, res, next) {
+  console.log('Time:', Date.now());
+  next();
+});
 /* GET home page. */
+
 router.get('/', function (req, res, next) {
-  res.render('index', {
-    title: '主页',
-    user: req.session.user,
-    success: req.flash('success').toString(),
-    error: req.flash('error').toString()
+  Article.get(null, function (err, posts) {
+    if (err) {
+      posts = [];
+    }
+    res.render('index', {
+      title: '主页',
+      user: req.session.user,
+      posts: posts,
+      success: req.flash('success').toString(),
+      error: req.flash('error').toString()
+    });
   });
 });
 /* 注册 */
@@ -108,6 +124,65 @@ router.get('/logout', function (req, res, next) {
   req.session.user = null;
   req.flash('success', '登出成功!');
   res.redirect('/');
+});
+
+router.get('/file_upload', function (req, res, next) {
+  res.render("upload");
+});
+router.post('/file_upload', upload.single("image"), function (req, res, next) {
+  try {
+    console.log("文件信息：", req.file); // 上传的文件信息
+
+    var des_file = req.file.destination + req.file.originalname;
+    fs.readFile(req.file.path, function (err, data) {
+      fs.writeFile(des_file, data, function (err) {
+        if (err) {
+          console.log(err);
+        } else {
+          response = {
+            message: 'File uploaded successfully',
+            filename: req.file.originalname
+          };
+        }
+        console.log(response);
+        res.end(JSON.stringify(response));
+      });
+    });
+  } catch (error) {
+    console.log("err", error);
+  }
+});
+router.get('/publish', function (req, res, next) {
+  try {
+    res.render("edit", {
+      title: "发表",
+      user: req.session.user,
+      success: req.flash('success').toString(),
+      error: req.flash('error').toString()
+    });
+  } catch (error) {
+    console.log(error);
+  }
+
+});
+router.post('/publish', checkLogin);
+router.post('/publish', function (req, res, next) {
+  try {
+    console.log("body", req.body);
+    var user = req.session.user
+    var artcile = new Article(user, req.body.title, req.body.content);
+    artcile.save(function (err, data) {
+      if (err) {
+        req.flash('error', err);
+        return res.redirect('/');
+      }
+      console.log("data", data);
+      res.redirect('/'); //发表成功跳转到主页
+    });
+  } catch (error) {
+    console.log(error);
+  }
+
 });
 
 module.exports = router;

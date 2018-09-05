@@ -7,14 +7,28 @@
 var app = require('../app');
 var debug = require('debug')('my_express:server');
 var http = require('http');
+// 代理
+const timeout = require('connect-timeout');
 
 /**
  * Get port from environment and store in Express.
  */
 
 var port = normalizePort(process.env.PORT || '3100');
-app.set('port', port);
+// 代理设置
+// 这里从环境变量读取配置，方便命令行启动
+// HOST 指目标地址
+// PORT 服务端口
 
+// 超时时间
+const TIME_OUT = 30 * 1e3;
+app.set('port', port);
+// 设置端口
+// 设置超时 返回超时响应
+app.use(timeout(TIME_OUT));
+app.use((req, res, next) => {
+  if (!req.timedout) next();
+});
 /**
  * Create HTTP server.
  */
@@ -58,9 +72,9 @@ function onError(error) {
     throw error;
   }
 
-  var bind = typeof port === 'string'
-    ? 'Pipe ' + port
-    : 'Port ' + port;
+  var bind = typeof port === 'string' ?
+    'Pipe ' + port :
+    'Port ' + port;
 
   // handle specific listen errors with friendly messages
   switch (error.code) {
@@ -83,8 +97,8 @@ function onError(error) {
 
 function onListening() {
   var addr = server.address();
-  var bind = typeof addr === 'string'
-    ? 'pipe ' + addr
-    : 'port ' + addr.port;
+  var bind = typeof addr === 'string' ?
+    'pipe ' + addr :
+    'port ' + addr.port;
   debug('Listening on ' + bind);
 }
